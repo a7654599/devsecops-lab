@@ -1,6 +1,6 @@
 # Deliberately old versions for the Dependabot (SCA) demo. Do not deploy. Never use in production.
 flask==2.0.1
-werkzeug==2.0.1
+werkzeug==3.1.9
 jinja2==3.0.1
 requests==2.25.1
 urllib3==1.26.4
