@@ -1,19 +1,20 @@
 """Inventory service for the DevSecOps lab (Assignment 9).
 
-This first version deliberately contains common security and quality
-problems so that the linter (Flake8 + flake8-bandit) and the SAST tool
-(CodeQL) have something to find. The password below is a FAKE demo value.
+Fixed version: every Flake8/bandit and CodeQL finding from the first
+version has been fixed or, where it is a false positive, explicitly
+suppressed with a reason.
 """
-import json
+import ipaddress
 import os
 import sqlite3
-import subprocess
+import subprocess  # noqa: S404 - needed for ping; input is validated below
 
-from flask import Flask, jsonify, request
+from flask import Flask, abort, jsonify, request
 
 app = Flask(__name__)
 
-DB_PASSWORD = "SuperSecret123"  # fake demo value: hardcoded password
+# Secrets come from the environment (e.g. a GitHub secret), never from source code.
+DB_PASSWORD = os.environ.get("DB_PASSWORD", "")
 
 
 def get_db():
@@ -27,18 +28,28 @@ def get_db():
 def inventory():
     sku = request.args.get("sku", "TICKET-01")
     conn = get_db()
-    # SQL built with string formatting -> SQL injection
-    row = conn.execute("SELECT qty FROM stock WHERE sku = '%s'" % sku).fetchone()
+    # Parameterized query: the driver escapes the value -> no SQL injection
+    row = conn.execute("SELECT qty FROM stock WHERE sku = ?", (sku,)).fetchone()
     return jsonify(sku=sku, qty=row[0] if row else 0)
 
 
 @app.route("/ping")
 def ping():
     host = request.args.get("host", "127.0.0.1")
-    # user input passed to a shell -> command injection
-    result = subprocess.run("ping -c 1 " + host, shell=True, capture_output=True, text=True)
+    # Allow only a valid IP address, then pass a fixed argument list (no shell)
+    try:
+        ip = ipaddress.ip_address(host)
+    except ValueError:
+        abort(400, "host must be an IP address")
+    result = subprocess.run(  # noqa: S603 - fixed argv, no shell, validated IP
+        ["/usr/bin/ping", "-c", "1", str(ip)],
+        capture_output=True,
+        text=True,
+        timeout=5,
+    )
     return jsonify(output=result.stdout)
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8081, debug=True)
+    # Local only, debug off unless explicitly enabled
+    app.run(host="127.0.0.1", port=8081, debug=os.environ.get("FLASK_DEBUG") == "1")

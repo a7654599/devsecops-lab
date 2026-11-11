@@ -3,5 +3,6 @@
 max-line-length = 100
 exclude = .git,__pycache__,.venv
 per-file-ignores =
-    # assert is how pytest works, so S101 is a false positive in tests
-    tests/*:S101
+    # false positives in tests: pytest uses assert (S101), and the test only
+    # imports subprocess to build a fake result, it never runs a command (S404)
+    tests/*:S101,S404
