@@ -1,0 +1,7 @@
+[flake8]
+# E/W = style, F = bugs (pyflakes), S = security (flake8-bandit)
+max-line-length = 100
+exclude = .git,__pycache__,.venv
+per-file-ignores =
+    # assert is how pytest works, so S101 is a false positive in tests
+    tests/*:S101
